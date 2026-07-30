@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import type { Role } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 
@@ -25,14 +25,24 @@ export function RequireAuth() {
  */
 export function RequireRole({ allow }: { allow: Role }) {
   const { isAuthenticated, role, initialized, profileCompleted } = useAuthStore();
+  const location = useLocation();
   if (!initialized) return <FullScreenLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!role) return <Navigate to="/role-select" replace />;
   if (role !== allow) return <Navigate to={`/${role}`} replace />;
-  
+
+  // /admin/setup lives inside this same guarded subtree, so redirecting to it
+  // unconditionally would redirect it to itself forever, leaving Outlet — and
+  // everything under it — never rendered. Skip the redirect once we're already
+  // on the target route.
   if (!profileCompleted) {
-    if (role === 'admin') return <Navigate to="/admin/setup" replace />;
-    if (role === 'teacher' || role === 'accountant' || role === 'transport') {
+    if (role === 'admin' && location.pathname !== '/admin/setup') {
+      return <Navigate to="/admin/setup" replace />;
+    }
+    if (
+      (role === 'teacher' || role === 'accountant' || role === 'transport') &&
+      location.pathname !== '/profile-setup'
+    ) {
       return <Navigate to="/profile-setup" replace />;
     }
   }

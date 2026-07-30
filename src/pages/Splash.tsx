@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlineAcademicCap, HiOutlineCurrencyRupee } from 'react-icons/hi';
 import { useAuthStore } from '@/store/authStore';
 import { ROLE_HOME } from '@/constants/roles';
 import { bgImages } from '@/constants/images';
@@ -9,6 +8,15 @@ import { bgImages } from '@/constants/images';
 export default function Splash() {
   const navigate = useNavigate();
   const { hasOnboarded, isAuthenticated, role, pendingRole } = useAuthStore();
+
+  useEffect(() => {
+    // Splash's 2200ms window is idle time — use it to warm the browser cache for
+    // Onboarding's photos, so they don't pop in empty on a cold first visit.
+    [bgImages.campus, bgImages.mountainSunrise, bgImages.architecture].forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -41,26 +49,18 @@ export default function Splash() {
         <div className="absolute bottom-1/4 right-1/4 w-40 h-40 rounded-full bg-lavender-400/40 blur-3xl animate-float mix-blend-screen" style={{ animationDelay: '1s' }} />
       </div>
 
-      {/* Glowing hexagonal logo — rupee + graduation cap */}
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0, rotate: -10 }}
-        animate={{ scale: 1, opacity: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        className="w-28 h-28 glass-card shadow-glow flex items-center justify-center mb-8 relative z-10"
-        style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }}
-      >
-        <HiOutlineAcademicCap size={44} className="text-blush-600 relative z-10" />
-        <div className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-gradient-cta shadow-glow flex items-center justify-center">
-          <HiOutlineCurrencyRupee size={14} className="text-white" />
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-blush-400/30 to-lavender-400/20 animate-pulse" />
-      </motion.div>
+      {/* Radial dark vignette behind the hero typography, for legibility over the photo */}
+      <div
+        className="absolute inset-0 z-[5] pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(0,0,0,0.55) 0%, transparent 70%)' }}
+      />
 
       <motion.h1
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-        className="font-display text-5xl font-bold text-center leading-tight relative z-10 text-white"
+        initial={{ scale: 0.85, opacity: 0, y: 15 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+        className="font-display text-6xl sm:text-7xl font-bold text-center leading-tight relative z-10 text-white px-6"
+        style={{ textShadow: '0 0 40px rgba(255,255,255,0.35), 0 4px 24px rgba(0,0,0,0.5)' }}
       >
         Smart School<br />FinTech
       </motion.h1>
@@ -68,8 +68,8 @@ export default function Splash() {
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.7 }}
-        className="text-sm font-medium text-white/60 mt-3 relative z-10 tracking-wide text-center leading-relaxed"
+        transition={{ delay: 0.5 }}
+        className="text-sm font-medium text-white/60 mt-5 relative z-10 tracking-wide text-center leading-relaxed"
       >
         Smarter Finance<br />Stronger Future
       </motion.p>

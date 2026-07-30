@@ -85,7 +85,7 @@ export default function ExpenseDetail() {
   const handleDelete = () => {
     if (!id) return;
     deleteExpense.mutate(id, {
-      onSuccess: () => navigate('/accountant/expenses', { replace: true }),
+      onSuccess: () => navigate('/accountant/expenses'),
     });
   };
 

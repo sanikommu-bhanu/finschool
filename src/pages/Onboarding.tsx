@@ -26,6 +26,7 @@ const slides = [
 
 export default function Onboarding() {
   const [index, setIndex] = useState(0);
+  const [loaded, setLoaded] = useState<Record<number, boolean>>({});
   const navigate = useNavigate();
   const setOnboarded = useAuthStore((s) => s.setOnboarded);
   const isLast = index === slides.length - 1;
@@ -40,10 +41,19 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col">
-      {/* Full-bleed slide image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out scale-105"
-        style={{ backgroundImage: `url(${slide.bg})` }}
+      {/* Solid gradient base — shows underneath the photo so there is never a bare
+          void if the image is slow to load or fails outright. */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blush-300 via-rose-300 to-blush-400" />
+      {/* Full-bleed slide image — fades in on load instead of popping in */}
+      <img
+        key={index}
+        src={slide.bg}
+        alt=""
+        loading={index === 0 ? 'eager' : 'lazy'}
+        onLoad={() => setLoaded((l) => ({ ...l, [index]: true }))}
+        className={`absolute inset-0 w-full h-full object-cover scale-105 transition-opacity duration-700 ease-in-out ${
+          loaded[index] ? 'opacity-100' : 'opacity-0'
+        }`}
       />
       {/* Dark gradient overlay for text legibility */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/10 to-black/80" />
