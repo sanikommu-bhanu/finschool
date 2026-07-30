@@ -1,5 +1,7 @@
 # Smart School FinTech
 
+**Live Demo:** [https://finschool-idnm.vercel.app/](https://finschool-idnm.vercel.app/)
+
 A mobile-first, glassmorphic school finance & operations platform — one app, six role-based
 dashboards (Admin, Accountant, Teacher, Transport, Parent, Student), all backed by real-time
 Firebase data.
