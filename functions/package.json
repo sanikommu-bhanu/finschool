@@ -1,0 +1,26 @@
+{
+  "name": "smart-school-fintech-functions",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Elevated-privilege Cloud Functions for Smart School FinTech — currently just the parent join-code redemption merge, which needs Admin SDK access the client's Firestore rules intentionally don't grant.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^5.1.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

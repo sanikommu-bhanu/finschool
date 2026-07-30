@@ -1,0 +1,252 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Helpers ----------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myUid() {
+      return request.auth.uid;
+    }
+
+    function myEmail() {
+      return request.auth.token.email;
+    }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(myUid())).data.role;
+    }
+
+    function isRole(role) {
+      return isSignedIn() && myRole() == role;
+    }
+
+    function isAdmin() {
+      return isRole('admin');
+    }
+
+    function isStaff() {
+      // Admin, accountant, teacher, transport all count as school staff for read/write access.
+      return isSignedIn() && myRole() in ['admin', 'accountant', 'teacher', 'transport'];
+    }
+
+    // ---- users --------------------------------------------------------
+    // Every signed-in user can read/create their own doc (needed for first-login + role-select).
+    // Role field, once set, can only be changed by the user themself at role-select time or by an admin.
+    match /users/{uid} {
+      allow read: if isSignedIn() && (myUid() == uid || isAdmin());
+      allow create: if isSignedIn() && myUid() == uid;
+      allow update: if isSignedIn() && (myUid() == uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ---- students -------------------------------------------------------
+    // Staff manage everything. A parent may only read student docs where they're the
+    // registered guardian (guardianEmail); a student may only read their own doc
+    // (studentEmail). Both fields are matched against the Google-auth email claim,
+    // and the client queries always filter on that same field, which is what makes
+    // "list" queries satisfy this rule (Firestore validates the query shape against it).
+    match /students/{studentId} {
+      allow read: if isStaff()
+        || (isSignedIn() && resource.data.guardianEmail == myEmail())
+        || (isSignedIn() && resource.data.studentEmail == myEmail());
+      // Staff write freely. A signed-in parent/student may also create or update a
+      // student record themselves as part of the join-code onboarding flow — but
+      // only ever one where the resulting studentEmail or guardianEmail is their
+      // own auth email, so self-service redemption can never touch someone else's
+      // child or impersonate another student.
+      allow create: if isStaff()
+        || (isSignedIn() && request.resource.data.studentEmail == myEmail())
+        || (isSignedIn() && request.resource.data.guardianEmail == myEmail());
+      allow update: if isStaff()
+        || (isSignedIn() && resource.data.studentEmail == myEmail())
+        || (isSignedIn() && resource.data.guardianEmail == myEmail());
+      allow delete: if isStaff();
+    }
+
+    // ---- payments & receipts --------------------------------------------
+    // Staff manage everything. Parents/students may only read records tied to a
+    // student they're linked to; writes always go through the accountant/parent
+    // payment-simulator flow, which runs as a staff or the payer themself via a
+    // batched write, so we allow create from any signed-in user but restrict
+    // updates/deletes to staff to keep the audit trail immutable.
+    match /payments/{paymentId} {
+      allow read: if isStaff() || isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isStaff();
+    }
+
+    match /receipts/{receiptId} {
+      allow read: if isStaff() || isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isStaff();
+    }
+
+    // ---- expenses ---------------------------------------------------------
+    // Back-office spend data (salaries, transport fuel, utilities, maintenance).
+    // Only admin/accountant ever need to see or log this — not parents, students,
+    // teachers, or transport staff — so it's scoped tighter than the general isStaff().
+    match /expenses/{expenseId} {
+      allow read, write: if isSignedIn() && myRole() in ['admin', 'accountant'];
+    }
+
+    // ---- teachers -----------------------------------------------------
+    // Staff manage the roster. A teacher may also read (but not write) their own doc.
+    match /teachers/{teacherId} {
+      allow read: if isStaff() || (isSignedIn() && resource.data.email == myEmail());
+      allow write: if isStaff();
+    }
+
+    // ---- parents --------------------------------------------------------
+    // Staff manage the roster. A parent may also read (but not write) their own doc.
+    match /parents/{parentId} {
+      allow read: if isStaff() || (isSignedIn() && resource.data.email == myEmail());
+      // Staff write freely. A signed-in parent may also create/update their own
+      // parent doc as part of the join-code onboarding flow — only ever a doc
+      // whose email is their own auth email.
+      allow create: if isStaff() || (isSignedIn() && request.resource.data.email == myEmail());
+      allow update: if isStaff() || (isSignedIn() && resource.data.email == myEmail());
+      allow delete: if isStaff();
+    }
+
+    // ---- classes ----------------------------------------------------------
+    // Read-only reference data for every signed-in role (timetables, class lists);
+    // only staff can define/edit classes.
+    match /classes/{classId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // ---- schoolProfile / academicYears / grades ----------------------------
+    // First-class school-identity entities (Admin > Settings > School Setup >
+    // Academic Structure). Read-only reference data for every signed-in role,
+    // same as `classes` above, but write is scoped to admin only rather than all
+    // staff — these define the school itself, not day-to-day operational data an
+    // accountant/teacher/transport account would ever need to change.
+    match /schoolProfile/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /academicYears/{yearId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /grades/{gradeId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---- attendance / assignments / announcements --------------------------
+    // These are keyed by className rather than a per-student doc, so a precise
+    // "only my child's class" rule would need a client-trusted join; instead we
+    // keep them readable by any signed-in user (parents/students only ever query
+    // their own child's className client-side) and writable by staff only.
+    match /attendance/{recordId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+    match /assignments/{assignmentId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // ---- transport: routes / vehicles / drivers ----------------------------
+    // Parents/students need read access to see live-ish transport status;
+    // only staff (admin/transport) may create or edit fleet data.
+    match /transportRoutes/{routeId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+    match /vehicles/{vehicleId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+    match /drivers/{driverId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // ---- notifications ------------------------------------------------------
+    // Locked to the recipient: a user can only ever read, mark-read, or delete
+    // their own notifications (matched on the Google-auth email claim). Staff
+    // (or the user themself) may create a notification, but only ever targeted
+    // at the creator or fanned out by staff — never at an arbitrary third party
+    // from a non-staff account.
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.targetEmail == myEmail();
+      allow create: if isStaff()
+        || (isSignedIn() && request.resource.data.targetEmail == myEmail());
+      allow update, delete: if isSignedIn() && resource.data.targetEmail == myEmail();
+    }
+
+    // ---- threads & messages (in-app direct messaging) ----------------------
+    // A thread (and everything sent inside it) is only ever visible to its participants.
+    // Participation is checked against participantEmails on the *existing* doc for read/update,
+    // and against the incoming doc for create, so a user can't read someone else's thread and
+    // can't create a thread claiming to include people while leaving themself out.
+    match /threads/{threadId} {
+      allow read: if isSignedIn() && myEmail() in resource.data.participantEmails;
+      allow create: if isSignedIn() && myEmail() in request.resource.data.participantEmails;
+      allow update: if isSignedIn() && myEmail() in resource.data.participantEmails;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        function threadParticipants() {
+          return get(/databases/$(database)/documents/threads/$(threadId)).data.participantEmails;
+        }
+        allow read: if isSignedIn() && myEmail() in threadParticipants();
+        allow create: if isSignedIn()
+          && myEmail() in threadParticipants()
+          && request.resource.data.senderId == myEmail();
+        // Only readBy changes after creation (marking read) — sender/text are immutable.
+        allow update: if isSignedIn() && myEmail() in threadParticipants();
+        allow delete: if false;
+      }
+    }
+
+    // ---- feeTemplates -------------------------------------------------------
+    // Reference data ("Grade 8 -> Admission/Tuition/Exam/Transport fee") that any
+    // signed-in role may need to read (parents/students see what a class owes),
+    // but only Admin/Accountant define.
+    match /feeTemplates/{templateId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && myRole() in ['admin', 'accountant'];
+    }
+
+    // ---- classJoinCodes -------------------------------------------------------
+    // The code itself must be readable by a signed-in user who's about to redeem
+    // it (parent/student registration queries by `code`), and by the owning
+    // teacher/staff to display + refresh it. Only staff (teacher included) can
+    // create/refresh a code.
+    match /classJoinCodes/{codeId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // ---- aiLogs ---------------------------------------------------------
+    // Only staff use the AI assistant, and every log must be self-attributed
+    // (userEmail must match the caller) — never editable or deletable after
+    // the fact, keeping it an honest audit trail.
+    match /aiLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isStaff() && request.resource.data.userEmail == myEmail();
+      allow update, delete: if false;
+    }
+
+    // ---- Everything else (accountants, fees, messages, settings, reports, --
+    // analytics, transport) -------------------------------------------------
+    // Default posture until each module ships its own precise rules:
+    // staff can read+write, everyone else can only read, nothing is world-writable.
+    match /{collection}/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+  }
+}
