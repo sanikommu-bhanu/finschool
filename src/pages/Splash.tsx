@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlineCube } from 'react-icons/hi';
+import { HiOutlineAcademicCap, HiOutlineCurrencyRupee } from 'react-icons/hi';
 import { useAuthStore } from '@/store/authStore';
 import { ROLE_HOME } from '@/constants/roles';
 import { bgImages } from '@/constants/images';
@@ -27,35 +27,40 @@ export default function Splash() {
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center">
-      {/* Real Unsplash background */}
-      <div 
+      {/* Cherry blossom background */}
+      <div
         className="absolute inset-0 bg-cover bg-center transition-all duration-[2s] ease-in-out scale-105"
-        style={{ backgroundImage: `url(${bgImages.architecture})` }}
+        style={{ backgroundImage: `url(${bgImages.cherryBlossom})` }}
       />
-      {/* Heavy Glassmorphism Overlay */}
-      <div className="absolute inset-0 bg-white/40 dark:bg-black/50 backdrop-blur-md" />
-      
+      {/* Soft dark gradient overlay for legibility */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/45 to-black/75" />
+
       {/* Floating Particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-blush-400/40 blur-3xl animate-float mix-blend-screen" />
         <div className="absolute bottom-1/4 right-1/4 w-40 h-40 rounded-full bg-lavender-400/40 blur-3xl animate-float mix-blend-screen" style={{ animationDelay: '1s' }} />
       </div>
 
+      {/* Glowing hexagonal logo — rupee + graduation cap */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0, rotate: -10 }}
         animate={{ scale: 1, opacity: 1, rotate: 0 }}
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        className="w-28 h-28 rounded-2xl glass-card shadow-glow flex flex-col items-center justify-center mb-8 relative z-10 overflow-hidden"
+        className="w-28 h-28 glass-card shadow-glow flex items-center justify-center mb-8 relative z-10"
+        style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }}
       >
-        <HiOutlineCube size={48} className="text-blush-600 mb-1 relative z-10" />
-        <div className="absolute inset-0 bg-gradient-to-tr from-blush-400/20 to-lavender-400/20 animate-pulse" />
+        <HiOutlineAcademicCap size={44} className="text-blush-600 relative z-10" />
+        <div className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-gradient-cta shadow-glow flex items-center justify-center">
+          <HiOutlineCurrencyRupee size={14} className="text-white" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-blush-400/30 to-lavender-400/20 animate-pulse" />
       </motion.div>
 
       <motion.h1
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.6 }}
-        className="font-display text-3xl font-bold text-center relative z-10 text-gray-900 dark:text-white"
+        className="font-display text-5xl font-bold text-center leading-tight relative z-10 text-white"
       >
         Smart School<br />FinTech
       </motion.h1>
@@ -64,13 +69,13 @@ export default function Splash() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
-        className="text-sm font-medium text-gray-600 dark:text-gray-300 mt-3 relative z-10 tracking-wide uppercase"
+        className="text-sm font-medium text-white/60 mt-3 relative z-10 tracking-wide text-center leading-relaxed"
       >
-        Smarter Finance, Stronger Future
+        Smarter Finance<br />Stronger Future
       </motion.p>
-      
+
       {/* Premium Loading Animation */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}

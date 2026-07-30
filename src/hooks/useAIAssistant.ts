@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { buildSchoolSnapshot, formatSnapshotForPrompt } from '@/services/aiContext.service';
-import { askGrok, logAIInteraction, isGrokConfigured, type ChatMessage } from '@/services/grokService';
+import { askGrok, logAIInteraction, type ChatMessage } from '@/services/grokService';
 import { useAuthStore } from '@/store/authStore';
 
 export interface DisplayMessage {
@@ -82,7 +82,6 @@ export function useAIAssistant() {
     messages,
     sendMessage,
     isSending: mutation.isPending,
-    isConfigured: isGrokConfigured(),
     snapshot,
   };
 }

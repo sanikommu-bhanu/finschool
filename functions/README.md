@@ -1,6 +1,20 @@
 # Cloud Functions — Smart School FinTech
 
-One function so far: `redeemJoinCodeForParent`, a callable (`onCall`) function that
+Two functions:
+
+- `askGrok` — proxies the AI Financial Assistant's chat completions to xAI's Grok
+  API. The key must never live in the client bundle (anyone can read it out of
+  devtools on a deployed site), so it's held server-side via Secret Manager:
+
+  ```bash
+  firebase functions:secrets:set GROK_API_KEY
+  ```
+
+  `GROK_MODEL` is an optional plain `defineString` param (defaults to
+  `grok-4.3`) — to override it, add `GROK_MODEL=<slug>` to `functions/.env`
+  before deploying.
+
+`redeemJoinCodeForParent`, a callable (`onCall`) function that
 runs the parent join-code redemption with Admin SDK privileges. It exists specifically
 to fix the classmate-merge limitation noted in `PROGRESS.md`: a self-service parent
 account can't run a `students` query scoped by `className` under `firestore.rules`

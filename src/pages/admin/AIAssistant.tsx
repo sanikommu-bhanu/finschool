@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlineChevronLeft, HiOutlineSparkles, HiOutlinePaperAirplane, HiOutlineExclamationCircle } from 'react-icons/hi';
+import { HiOutlineChevronLeft, HiOutlineSparkles, HiOutlinePaperAirplane } from 'react-icons/hi';
 import { Screen } from '@/components/layout/Screen';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useAIAssistant, SUGGESTED_PROMPTS } from '@/hooks/useAIAssistant';
@@ -8,7 +8,7 @@ import clsx from 'clsx';
 
 export default function AIAssistant() {
   const navigate = useNavigate();
-  const { messages, sendMessage, isSending, isConfigured, snapshot } = useAIAssistant();
+  const { messages, sendMessage, isSending, snapshot } = useAIAssistant();
   const [input, setInput] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -38,19 +38,6 @@ export default function AIAssistant() {
           </p>
         </div>
       </div>
-
-      {!isConfigured && (
-        <GlassCard padding="sm" className="flex items-start gap-2 mb-4 shrink-0 border border-amber-300/40">
-          <HiOutlineExclamationCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-blush-700/80 dark:text-blush-200/70">
-            No Grok API key configured yet. Add a free key from{' '}
-            <a href="https://console.x.ai" target="_blank" rel="noreferrer" className="underline font-semibold">
-              console.x.ai
-            </a>{' '}
-            to <code className="text-[10px]">VITE_GROK_API_KEY</code> in your <code className="text-[10px]">.env</code> file, then restart the dev server.
-          </p>
-        </GlassCard>
-      )}
 
       <div className="flex-1 overflow-y-auto space-y-3 min-h-0 -mx-1 px-1">
         {messages.length === 0 && (

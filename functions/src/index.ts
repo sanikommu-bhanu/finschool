@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { defineSecret, defineString } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
@@ -167,5 +168,75 @@ export const redeemJoinCodeForParent = onCall<RedeemParentRequest, Promise<Redee
     }
 
     return { ok: true, studentId, parentId, merged };
+  }
+);
+
+/**
+ * Proxies the AI Financial Assistant's chat completions to xAI's Grok API.
+ *
+ * The API key must never ship in the client bundle (anyone can read it out of
+ * devtools/network tab from a deployed site), so this callable holds it server-side
+ * via Secret Manager (`GROK_API_KEY`, set with `firebase functions:secrets:set
+ * GROK_API_KEY`) and the client (src/services/grokService.ts) calls this function
+ * instead of api.x.ai directly.
+ */
+
+const grokApiKey = defineSecret('GROK_API_KEY');
+const grokModel = defineString('GROK_MODEL', { default: 'grok-4.3' });
+
+interface GrokChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface AskGrokRequest {
+  messages: GrokChatMessage[];
+}
+
+type AskGrokResult = { content: string };
+
+export const askGrok = onCall<AskGrokRequest, Promise<AskGrokResult>>(
+  { region: 'us-central1', secrets: [grokApiKey] },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Sign in required.');
+    }
+
+    const messages = request.data?.messages;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      throw new HttpsError('invalid-argument', 'messages (non-empty array) is required.');
+    }
+
+    const apiKey = grokApiKey.value();
+    if (!apiKey) {
+      throw new HttpsError('failed-precondition', 'Grok API key is not configured on the server.');
+    }
+
+    const res = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: grokModel.value(),
+        messages,
+        temperature: 0.4,
+        max_tokens: 700,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new HttpsError('internal', `Grok API error (${res.status}): ${body.slice(0, 200) || res.statusText}`);
+    }
+
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new HttpsError('internal', 'Grok returned an empty response.');
+    }
+
+    return { content };
   }
 );
